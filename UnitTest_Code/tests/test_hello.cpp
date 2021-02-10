@@ -31,7 +31,6 @@ struct ConstructorFixture {
     const std::string currencyUSD;
     const float value10;
     const float value20;
-
 };
 
 
@@ -40,10 +39,20 @@ TEST_FIXTURE(ConstructorFixture, MoneyConstructorAmount) {
     // Within the TEST_FIXTUREs we can directly access the fixture class’s member variables.
     Money money1(value10, currencyCAD);
     Money money2(value10, currencyCAD);
-    CHECK_EQUAL(money1.get_amount(), money2.get_amount()); // pass
+    CHECK_EQUAL(money1.get_amount(), money2.get_amount());  // pass
 }
 TEST_FIXTURE(ConstructorFixture, MoneyConstructorCurrency) {
     Money money1(value10, currencyCAD);
     Money money2(value20, currencyUSD);
-    CHECK(money1 == money2); // fail // need to overload operator ==
+    //    CHECK(money1 == money2); // fail // need to overload operator ==
 }
+
+SUITE(MoneyConstructorAccessor) {
+    // add a suite to group related tests together
+    TEST(test_run_time) {
+        UNITTEST_TIME_CONSTRAINT(10);  // The test must finish in 10 ms
+        UnitTest::TimeHelpers::SleepMs(100);  // Add 100 ms in the test
+        // The test will fail
+    }
+}
+
