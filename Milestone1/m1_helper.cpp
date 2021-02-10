@@ -16,6 +16,7 @@
 
 //Naming Convention: use snake style for helper functions
 
+bool check_duplicate(std::vector<IntersectionIdx> adjacentIntersections, IntersectionIdx intersection_id);
 
 bool check_duplicate(std::vector<IntersectionIdx> adjacentIntersections, IntersectionIdx intersection_id){
     bool no_duplicate = true;
