@@ -19,25 +19,21 @@
  * SOFTWARE.
  */
 
+
 // library & header file provided
 #include <iostream>
 #include "m1.h"
-#include "StreetsDatabaseAPI.h"
+/*
+     library & header file provided in m1.h
+     #include <string>
+     #include <vector>
+     #include <utility>
+     #include "StreetsDatabaseAPI.h"
+    */
 
 // added library & header file
-#include "m1_helper.cpp"
-#include <math.h>
-#include <utility>
-#include <map>
-#include <string>
-
-using std::vector;
-using std::pair;
-using std::cin;
-using std::cout;
-using std::endl;
-using std::multimap;
-using std::string;
+#include "m1_helper.h"
+#include "globals.h"
 
 
 // loadMap will be called with the name of the file that stores the "layer-2"
@@ -56,182 +52,32 @@ using std::string;
 // global variable, read only in functions other than load/closeMap
 // need to free it in closeMap()
 
-/* Hierarchy
-Level 1:
- Intersection (number = getNumIntersections())
- variable type: vector<StreetSegmentIdx>
-    Level 2:
-    StreetSegmentIdx (number = getNumIntersectionStreetSegment(intersection_id)
-    variable type: StreetSegmentIdx
-*/
-vector<vector<StreetSegmentIdx>> intersection_to_streetSegments;
-
-/* Hierarchy
-Level 1:
- StreetSegmentIdx (number = getNumIntersections())
- variable type: vector<SmallSegmentsLength>
-    Level 2:
-    SmallSegmentLength (number = getStreetSegmentInfo(street_segment_id).numCurvePoints)
-    variable type: SmallSegmentsLength
-*/
-typedef double SmallSegmentsLength;
-vector<vector<SmallSegmentsLength>> streetSegments_to_smallSegmentsLength;
-
-/* Hierarchy
-Level 1:
- streetSegmentIdx (number = getNumStreetSegments())
- variable type: double
- */
-vector<double> segment_length;
-
-/* Hierarchy
-Level 1:
- streetSegmentIdx (number = getNumStreetSegments())
- variable type: double
- */
-vector<double> segment_travel_time;
-
-/* Hierarchy
-Level 1:
- StreetIdx (number = getNumStreets())
- variable type: vector<StreetSegmentIdx>
-    Level 2:
-    StreetSegmentIdx (number UNKNOWN)
-    variable type: StreetSegmentIdx
-*/
-vector<vector<StreetSegmentIdx>> street_to_streetSegments;
-
-/* Hierarchy
-Level 1:
- StreetIdx (number = getNumStreets())
- variable type: vector<IntersectionIdx>
-    Level 2:
-    IntersectionIdx (number UNKNOWN)
-    variable type: IntersectionIdx
-*/
-vector<vector<IntersectionIdx>> street_to_intersections;
-
-/* Hierarchy
-Level 1:
- string (number = getNumStreets() * number of characters in each string name)
- variable type: pair<string, StreetIdx>
-*/
-multimap<string, StreetIdx> paritial_street_names;
 
 bool loadMap(std::string map_streets_database_filename) {
     bool load_successful = loadStreetsDatabaseBIN(map_streets_database_filename);  //Indicates whether the map has loaded successfully
     if(load_successful) {
         cout << "loadMap: " << map_streets_database_filename << endl;
 
-
-#pragma mark streetIntersection -> streetSegment
-        //Create empty vector for each intersection
-        //Complexity: O(n)
-        intersection_to_streetSegments.resize(getNumIntersections());
-
-        //Iterate through all intersections
-        //Complexity; O(k), where k is a small constant
-        for(IntersectionIdx intersection = 0; intersection < getNumIntersections(); intersection++) {
-            //Load streetSegmentId for each intersection
-            for(int i = 0; i < getNumIntersectionStreetSegment(intersection); ++i) {
-                StreetSegmentIdx ss_ids = getIntersectionStreetSegment(intersection, i);
-                intersection_to_streetSegments[intersection].push_back(ss_ids);
-            }
-        }
-        //Overall Complexity: O(kn)
-
-
-#pragma mark streetSegments -> smallSegments
-        streetSegments_to_smallSegmentsLength.resize(getNumStreetSegments());
-        for(StreetSegmentIdx street_segment_id = 0; street_segment_id < getNumStreetSegments(); street_segment_id++) {
-            int numCurvePoint = getStreetSegmentInfo(street_segment_id).numCurvePoints;
-            //Load SmallSegmentLength for each StreetSegmentIdx
-            for(IntersectionIdx intersection_id = -1; intersection_id < numCurvePoint; intersection_id++) {
-                // find the IntersectionIdx of the from and to
-                // Total endpoints = numCurvePoint + 2
-                // Total segment = numCurvePoint + 1 (number of loop needed)
-                LatLon seg_From, seg_To;
-                if(intersection_id == -1)
-                    seg_From = getIntersectionPosition(getStreetSegmentInfo(street_segment_id).from);
-                else
-                    seg_From = getStreetSegmentCurvePoint(street_segment_id, intersection_id);
-
-                if(intersection_id == numCurvePoint - 1)
-                    seg_To = getIntersectionPosition(getStreetSegmentInfo(street_segment_id).to);
-                else
-                    seg_To = getStreetSegmentCurvePoint(street_segment_id, intersection_id + 1);
-
-                // Create a pair, add each small segment
-                pair<LatLon, LatLon> pair_of_intersection_id(seg_From, seg_To);
-                streetSegments_to_smallSegmentsLength[street_segment_id].push_back(findDistanceBetweenTwoPoints(pair_of_intersection_id));
-                // push in total numCurvePoints + 1 items
-            }
-        }
-
-#pragma mark streetSegments -> segmentLength
-        segment_length.resize(getNumStreetSegments());
-        for(int i = 0; i < getNumStreetSegments(); i++) {
-            for(int j = 0; j < streetSegments_to_smallSegmentsLength[i].size(); j++)
-                // add every small segment to calculate the length
-                segment_length[i] += streetSegments_to_smallSegmentsLength[i][j];
-        }
-
-#pragma mark streetSegments -> segmentTravelTime
-        segment_travel_time.resize(getNumStreetSegments());
-        for(int i = 0; i < getNumStreetSegments(); i++) {
-            // travel time = segment_length[i] / speedLimit
-            segment_travel_time[i] = segment_length[i] / getStreetSegmentInfo(i).speedLimit;
-        }
-
-#pragma mark street -> streetSegments
-        street_to_streetSegments.resize(getNumStreets());
-        for(StreetSegmentIdx street_segment_id = 0; street_segment_id < getNumStreetSegments(); street_segment_id++) {
-            // Load each streetSegment and insert to the vector of corresponding streetID
-            street_to_streetSegments[getStreetSegmentInfo(street_segment_id).streetID].push_back(street_segment_id);
-        }
-
-#pragma mark street -> intersections
-        street_to_intersections.resize(getNumStreets());
-        for(StreetIdx street_num = 0; street_num < getNumStreets(); street_num++) {
-            for(int segment_num = 0; segment_num < street_to_streetSegments[street_num].size(); segment_num++) {
-                // Add the to&from intersection of each segment to the return vector if not duplicate. As the to and from are randomly assigned, we have to add both do and from and check dulplicate.
-                if(check_duplicate(street_to_intersections[street_num], getStreetSegmentInfo(street_to_streetSegments[street_num][segment_num]).from))
-                    street_to_intersections[street_num].push_back(getStreetSegmentInfo(street_to_streetSegments[street_num][segment_num]).from);
-                if(check_duplicate(street_to_intersections[street_num], getStreetSegmentInfo(street_to_streetSegments[street_num][segment_num]).to))
-                    street_to_intersections[street_num].push_back(getStreetSegmentInfo(street_to_streetSegments[street_num][segment_num]).to);
-            }
-        }
-
-#pragma mark streetName -> paritialStreetNames
-        for(int street_id = 0; street_id < getNumStreets(); street_id++) {
-            for(int length = 1; length < +getStreetName(street_id).length(); length++) {
-                char partialName[length + 1];  // +1 null character
-                int end = (int)getStreetName(street_id).copy(partialName, length, 0);
-                // length: number of characters need to be copied
-                // 0: position to start copy
-                partialName[end] = '\0';
-                // put the null character at the end
-                string partialNameString = convert_to_string(partialName, length + 1);
-                // make all Upper case and Delete space for comparing
-                partialNameString = modify_name(partialNameString);
-                pair<string, StreetIdx> toInsert(partialNameString, street_id);
-                paritial_street_names.insert(toInsert);
-            }
-        }
+        streetIntersection_to_streetSegment();
+        streetSegments_to_smallSegments();
+        streetSegments_to_segmentLength();
+        streetSegments_to_segmentTravelTime();
+        street_to_streetSegments();
+        street_to_intersections();
+        streetName_to_partialStreetNames();
     }
-
     return load_successful;
 }
 
 void closeMap() {
     // clear the global variables
-    intersection_to_streetSegments.clear();
-    streetSegments_to_smallSegmentsLength.clear();
+    intersection_streetSegments.clear();
+    streetSegments_smallSegmentsLength.clear();
     segment_length.clear();
     segment_travel_time.clear();
-    street_to_streetSegments.clear();
-    street_to_intersections.clear();
-    paritial_street_names.clear();
+    street_streetSegments.clear();
+    street_intersections.clear();
+    partial_street_names.clear();
 
     //Clean-up your map related data structures here
     // Not pass valgrind, memory leak for global variables
@@ -254,11 +100,6 @@ double findDistanceBetweenTwoPoints(pair<LatLon, LatLon> points) {
 // Returns the length of the given street segment in meters
 // Speed Requirement --> moderate
 double findStreetSegmentLength(StreetSegmentIdx street_segment_id) {
-    //    double streetSegmentLength = 0;
-    //    for(int small_segment_id = 0; small_segment_id < streetSegments_to_smallSegmentsLength[street_segment_id].size(); small_segment_id++) {
-    //        streetSegmentLength += streetSegments_to_smallSegmentsLength[street_segment_id][small_segment_id];
-    //    }
-
     return segment_length[street_segment_id];
 }
 
@@ -297,7 +138,7 @@ IntersectionIdx findClosestIntersection(LatLon my_position) {
 // Returns the street segments that connect to the given intersection
 // Speed Requirement --> high
 vector<StreetSegmentIdx> findStreetSegmentsOfIntersection(IntersectionIdx intersection_id) {
-    return intersection_to_streetSegments[intersection_id];
+    return intersection_streetSegments[intersection_id];
 }
 
 #pragma mark Intersection test 2 Pass
@@ -346,7 +187,7 @@ vector<IntersectionIdx> findAdjacentIntersections(IntersectionIdx intersection_i
 // Returns all intersections along the a given street
 // Speed Requirement --> high
 vector<IntersectionIdx> findIntersectionsOfStreet(StreetIdx street_id) {
-    return street_to_intersections[street_id];
+    return street_intersections[street_id];
 }
 
 #pragma mark Street test 2 Pass
@@ -359,17 +200,17 @@ vector<IntersectionIdx> findIntersectionsOfStreet(StreetIdx street_id) {
 vector<IntersectionIdx> findIntersectionsOfTwoStreets(pair<StreetIdx, StreetIdx> street_ids) {
     vector<IntersectionIdx> intersectionsOfTwoStreets;
     // Iterate through street_to_intersections of two streets to find common intersections
-    for(int intersection_num_1 = 0; intersection_num_1 < street_to_intersections[street_ids.first].size(); intersection_num_1++) {
-        for(int intersection_num_2 = 0; intersection_num_2 < street_to_intersections[street_ids.second].size(); intersection_num_2++) {
-            if(street_to_intersections[street_ids.first][intersection_num_1] == street_to_intersections[street_ids.second][intersection_num_2])
-                intersectionsOfTwoStreets.push_back(street_to_intersections[street_ids.first][intersection_num_1]);
+    for(int intersection_num_1 = 0; intersection_num_1 < street_intersections[street_ids.first].size(); intersection_num_1++) {
+        for(int intersection_num_2 = 0; intersection_num_2 < street_intersections[street_ids.second].size(); intersection_num_2++) {
+            if(street_intersections[street_ids.first][intersection_num_1] == street_intersections[street_ids.second][intersection_num_2])
+                intersectionsOfTwoStreets.push_back(street_intersections[street_ids.first][intersection_num_1]);
         }
     }
 
     return intersectionsOfTwoStreets;
 }
 
-#pragma mark Street Test 3
+#pragma mark Street Test 3 Fail
 // Returns all street ids corresponding to street names that start with the
 // given prefix
 // The function should be case-insensitive to the street prefix.
@@ -383,29 +224,48 @@ vector<IntersectionIdx> findIntersectionsOfTwoStreets(pair<StreetIdx, StreetIdx>
 // length 0 string.
 // Speed Requirement --> high
 vector<StreetIdx> findStreetIdsFromPartialStreetName(std::string street_prefix) {
-    vector<StreetIdx> street_ids_from_partial_street_name;
-
-    if(street_prefix.length() == 0)
-        return street_ids_from_partial_street_name;  // Return an empty vector if street_prefix is an empty string
+    std::set<StreetIdx> street_ids_from_partial_street_name;
+    //street_ids_from_partial_street_name.resize(1);
+    if(street_prefix.length() == 0) {
+        return {};  // Return an empty vector if street_prefix is an empty string
+    }
 
     street_prefix = modify_name(street_prefix);
 
-    auto itr1 = paritial_street_names.lower_bound(street_prefix);
-    auto itr2 = paritial_street_names.upper_bound(street_prefix);
+    auto it_start = partial_street_names.lower_bound(street_prefix);
+    *street_prefix.rbegin() = *street_prefix.rbegin() + 1;
+    auto it_end = partial_street_names.lower_bound(street_prefix);
 
-    while(itr1 != itr2) {
-        street_ids_from_partial_street_name.push_back(itr1->second);
-        itr1++;
+    for(multimap<std::string, StreetIdx>::iterator it = it_start; it != it_end; it++) {
+        street_ids_from_partial_street_name.insert(it->second);
     }
-    /*
-    pair<multimap<string, StreetIdx>::iterator, multimap<string, StreetIdx>::iterator> bound;
-    bound = paritial_street_names.equal_range(street_prefix);
-    for(multimap<string, StreetIdx>::iterator it = bound.first; it != bound.second; it++){
-        street_ids_from_partial_street_name.push_back(it->second);
-    }
-    */
 
-    return street_ids_from_partial_street_name;
+    std::vector<StreetIdx> ret_vec(street_ids_from_partial_street_name.begin(), street_ids_from_partial_street_name.end());
+    return ret_vec;
+    
+    //    vector<StreetIdx> street_ids_from_partial_street_name;
+    //
+    //    if(street_prefix.length() == 0)
+    //        return street_ids_from_partial_street_name;  // Return an empty vector if street_prefix is an empty string
+    //
+    //    street_prefix = modify_name(street_prefix);
+    //
+    //    auto itr1 = partial_street_names.lower_bound(street_prefix);
+    //    auto itr2 = partial_street_names.upper_bound(street_prefix);
+    //
+    //    while(itr1 != itr2) {
+    //        street_ids_from_partial_street_name.push_back(itr1->second);
+    //        itr1++;
+    //    }
+    //    /*
+    //    pair<multimap<string, StreetIdx>::iterator, multimap<string, StreetIdx>::iterator> bound;
+    //    bound = paritial_street_names.equal_range(street_prefix);
+    //    for(multimap<string, StreetIdx>::iterator it = bound.first; it != bound.second; it++){
+    //        street_ids_from_partial_street_name.push_back(it->second);
+    //    }
+    //    */
+
+    // return street_ids_from_partial_street_name;
 }
 
 #pragma mark Distance Time Test 4 Pass
@@ -413,45 +273,45 @@ vector<StreetIdx> findStreetIdsFromPartialStreetName(std::string street_prefix) 
 // Speed Requirement --> high
 double findStreetLength(StreetIdx street_id) {
     double streetLength = 0;
-    // Iterate through street_to_streetSegments, add together lengths of all streetSegments of the street
+    // Iterate through street_streetSegments, add together lengths of all streetSegments of the street
     // Make use of function: findStreetSegmentLength
-    for(int segment_num = 0; segment_num < street_to_streetSegments[street_id].size(); segment_num++) {
-        streetLength += findStreetSegmentLength(street_to_streetSegments[street_id][segment_num]);
+    for(int segment_num = 0; segment_num < street_streetSegments[street_id].size(); segment_num++) {
+        streetLength += findStreetSegmentLength(street_streetSegments[street_id][segment_num]);
     }
 
     return streetLength;
 }
 
-#pragma mark Street Test 4
+#pragma mark Street Test 4 Pass
 // Return the smallest rectangle that contains all the intersections and
 // curve points of the given street (i.e. the min,max lattitude
 // and longitude bounds that can just contain all points of the street).
 // Speed Requirement --> none
 LatLonBounds findStreetBoundingBox(StreetIdx street_id) {
     // Initialize max and min latitude and longitude to that of the first intersection of the first street segment
-    double min_lat = getIntersectionPosition(getStreetSegmentInfo(street_to_streetSegments[street_id][0]).from).latitude();
-    double max_lat = getIntersectionPosition(getStreetSegmentInfo(street_to_streetSegments[street_id][0]).from).latitude();
-    double min_lon = getIntersectionPosition(getStreetSegmentInfo(street_to_streetSegments[street_id][0]).from).longitude();
-    double max_lon = getIntersectionPosition(getStreetSegmentInfo(street_to_streetSegments[street_id][0]).from).longitude();
-    
-    for (int segment_num = 0; segment_num < street_to_streetSegments[street_id].size(); segment_num++) {
+    double min_lat = getIntersectionPosition(getStreetSegmentInfo(street_streetSegments[street_id][0]).from).latitude();
+    double max_lat = getIntersectionPosition(getStreetSegmentInfo(street_streetSegments[street_id][0]).from).latitude();
+    double min_lon = getIntersectionPosition(getStreetSegmentInfo(street_streetSegments[street_id][0]).from).longitude();
+    double max_lon = getIntersectionPosition(getStreetSegmentInfo(street_streetSegments[street_id][0]).from).longitude();
+
+    for(int segment_num = 0; segment_num < street_streetSegments[street_id].size(); segment_num++) {
         // Compare segment.from to current min/max
-        max_lat = compare_max_lat(max_lat, getIntersectionPosition(getStreetSegmentInfo(street_to_streetSegments[street_id][segment_num]).from));
-        min_lat = compare_min_lat(min_lat, getIntersectionPosition(getStreetSegmentInfo(street_to_streetSegments[street_id][segment_num]).from));
-        max_lon = compare_max_lon(max_lon, getIntersectionPosition(getStreetSegmentInfo(street_to_streetSegments[street_id][segment_num]).from));
-        min_lon = compare_min_lon(min_lon, getIntersectionPosition(getStreetSegmentInfo(street_to_streetSegments[street_id][segment_num]).from));
-    // Compare segment.to to current min/max
-    max_lat = compare_max_lat(max_lat, getIntersectionPosition(getStreetSegmentInfo(street_to_streetSegments[street_id][segment_num]).to));
-        min_lat = compare_min_lat(min_lat, getIntersectionPosition(getStreetSegmentInfo(street_to_streetSegments[street_id][segment_num]).to));
-        max_lon = compare_max_lon(max_lon, getIntersectionPosition(getStreetSegmentInfo(street_to_streetSegments[street_id][segment_num]).to));
-        min_lon = compare_min_lon(min_lon, getIntersectionPosition(getStreetSegmentInfo(street_to_streetSegments[street_id][segment_num]).to));
-    // Compare all curve points of segment to current min/max
-    for (int curve_point_num = 0; curve_point_num < getStreetSegmentInfo(street_to_streetSegments[street_id][segment_num]).numCurvePoints; curve_point_num++) {
-        max_lat = compare_max_lat(max_lat, getStreetSegmentCurvePoint(street_to_streetSegments[street_id][segment_num], curve_point_num));
-            min_lat = compare_min_lat(min_lat, getStreetSegmentCurvePoint(street_to_streetSegments[street_id][segment_num], curve_point_num));
-            max_lon = compare_max_lon(max_lon, getStreetSegmentCurvePoint(street_to_streetSegments[street_id][segment_num], curve_point_num));
-            min_lon = compare_min_lon(min_lon, getStreetSegmentCurvePoint(street_to_streetSegments[street_id][segment_num], curve_point_num));
-    }
+        max_lat = compare_max_lat(max_lat, getIntersectionPosition(getStreetSegmentInfo(street_streetSegments[street_id][segment_num]).from));
+        min_lat = compare_min_lat(min_lat, getIntersectionPosition(getStreetSegmentInfo(street_streetSegments[street_id][segment_num]).from));
+        max_lon = compare_max_lon(max_lon, getIntersectionPosition(getStreetSegmentInfo(street_streetSegments[street_id][segment_num]).from));
+        min_lon = compare_min_lon(min_lon, getIntersectionPosition(getStreetSegmentInfo(street_streetSegments[street_id][segment_num]).from));
+        // Compare segment.to to current min/max
+        max_lat = compare_max_lat(max_lat, getIntersectionPosition(getStreetSegmentInfo(street_streetSegments[street_id][segment_num]).to));
+        min_lat = compare_min_lat(min_lat, getIntersectionPosition(getStreetSegmentInfo(street_streetSegments[street_id][segment_num]).to));
+        max_lon = compare_max_lon(max_lon, getIntersectionPosition(getStreetSegmentInfo(street_streetSegments[street_id][segment_num]).to));
+        min_lon = compare_min_lon(min_lon, getIntersectionPosition(getStreetSegmentInfo(street_streetSegments[street_id][segment_num]).to));
+        // Compare all curve points of segment to current min/max
+        for(int curve_point_num = 0; curve_point_num < getStreetSegmentInfo(street_streetSegments[street_id][segment_num]).numCurvePoints; curve_point_num++) {
+            max_lat = compare_max_lat(max_lat, getStreetSegmentCurvePoint(street_streetSegments[street_id][segment_num], curve_point_num));
+            min_lat = compare_min_lat(min_lat, getStreetSegmentCurvePoint(street_streetSegments[street_id][segment_num], curve_point_num));
+            max_lon = compare_max_lon(max_lon, getStreetSegmentCurvePoint(street_streetSegments[street_id][segment_num], curve_point_num));
+            min_lon = compare_min_lon(min_lon, getStreetSegmentCurvePoint(street_streetSegments[street_id][segment_num], curve_point_num));
+        }
     }
     // Construct LatLon for point with min and max coordinate
     LatLon min_point(min_lat, min_lon);
@@ -467,11 +327,11 @@ LatLonBounds findStreetBoundingBox(StreetIdx street_id) {
 // Returns the nearest point of interest of the given name to the given position
 // Speed Requirement --> none
 POIIdx findClosestPOI(LatLon my_position, std::string POIname) {
-    double distance, shortest_distance;
+    double distance = 0, shortest_distance = 0;
 
     // Find the First POIname
     POIIdx first_found;
-    POIIdx closestPOI;
+    POIIdx closestPOI = 0;
     for(first_found = 0; first_found < getNumPointsOfInterest(); first_found++) {
         if(getPOIName(first_found) == POIname) {
             pair<LatLon, LatLon> first_segment(my_position, getPOIPosition(first_found));
