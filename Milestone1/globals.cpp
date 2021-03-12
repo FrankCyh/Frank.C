@@ -15,7 +15,6 @@ Level 1:
     StreetSegmentIdx (number = getNumIntersectionStreetSegment(intersection_id)
     variable type: StreetSegmentIdx
 */
-
 vector<vector<StreetSegmentIdx>> intersection_streetSegments;
 
 /* Hierarchy
@@ -68,6 +67,11 @@ Level 1:
  variable type: pair<string, StreetIdx>
 */
 multimap<string, StreetIdx> partial_street_names;
+
+struct intersection_data {
+    LatLon position;
+    std::string name;
+};
 
 // streetIntersection -> streetSegment
 void streetIntersection_to_streetSegment() {
@@ -176,5 +180,22 @@ void streetName_to_partialStreetNames() {
             pair<string, StreetIdx> toInsert(partialNameString, street_id);
             partial_street_names.insert(toInsert);
         }
+    }
+}
+
+struct POI_data {
+    string name;
+    string type;
+    LatLon position;
+    OSMID OSM_id;
+};
+
+extern set<POI_data> POIs;
+
+void load_POIs() {
+    POIs.resize(getNumPointsOfInterest());
+    for(int i = 0; i < getNumPointsOfInterest(); i++) {
+        POI_data temp = {.name = getPOIName(i), .type = getPOIType(i), .position = getPOIPosition(i), .OSM_id = getPOIOSMNodeID(i));
+        POIs.insert(temp);
     }
 }

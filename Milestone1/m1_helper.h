@@ -13,6 +13,7 @@
 #include "globals.h"
 
 #include <string>
+#include <math.h>
 using std::string;
 
 
@@ -22,12 +23,8 @@ string modify_name(std::string name);
 
 string convert_to_string(char* a, int size);
 
-double compare_max_lat(double maxLat, LatLon point);
+void update_bounding_box(double & maxLat, double & minLat, double & maxLon, double & minLon, LatLon point);
 
-double compare_min_lat(double minLat, LatLon point);
-
-double compare_max_lon(double maxLon, LatLon point);
-
-double compare_min_lon(double minLon, LatLon point);
+void ordinal_number(int i);
 
 #endif /* m1_helper_h */
