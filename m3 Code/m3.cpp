@@ -13,19 +13,18 @@
 // no turn, then there is no penalty. Note that whenever the street id changes
 // (e.g. going from Bloor Street West to Bloor Street East) we have a turn.
 double computePathTravelTime(const std::vector<StreetSegmentIdx>& path, const double turn_penalty) {
-    double time = 0;
+    double time = 0; // initialize to 0; pathTravelTime = 0 is the vector is empty
 
     for(int i = 0; i < path.size(); i++) {
-        // calculate the time needed to travel from the start to the end of the i_th street segment
         time += findStreetSegmentTravelTime(path[i]);
 
-        // calculate the time needed if a turn is encountered
+        // turn encountered: streetID is of last and this streetSegment is not the same
         if((i != 0) && (getStreetSegmentInfo(path[i]).streetID != getStreetSegmentInfo(path[i - 1]).streetID)) {
             time += turn_penalty;
         }
     }
     return time;
-}  // only used when finally find the shortest path
+}  // not used in findPathBetweenIntersections(), only used to calculate the final time
 
 
 // Returns a path (route) between the start intersection and the destination
@@ -40,50 +39,94 @@ std::vector<StreetSegmentIdx> findPathBetweenIntersections(
 const IntersectionIdx intersect_id_start,
 const IntersectionIdx intersect_id_destination,
 const double turn_penalty) {
-    // calculate the position of destination for calculation of estimated time
+    // initialize and clear global variable NodeList each time the function findPathBetweenIntersections() is called
+    NodeList.resize(getNumIntersections());
+    
+    // use priority_queue to store WaveElems, arrange in increasing order of EstimatedTravelTime
+    priority_queue<WaveElem, std::vector<WaveElem>, CompareEstimatedTravelTime> Wavefront;
+
+    // calculate the position of destination for later calculation of estimated time
     LatLon destination_position = getIntersectionPosition(intersect_id_destination);
 
+    // Initialize firstwave starting at IntersectionIdx intersect_id_start
     WaveElem firstwave = WaveElem(intersect_id_start, NON_EXISTENT, 0, 0);
     Wavefront.push(firstwave);
 
+    
     while(!Wavefront.empty()) {
-        WaveElem wave = Wavefront.top();  // get next node in the priority queue
-        Wavefront.pop();  // remove the mode
+        WaveElem wave = Wavefront.top();  // get next WaveElem in the priority queue
+        Wavefront.pop();  // remove top WaveElem
 
-        Node* currentNode = & NodeList[wave.nodeID];
         // currentNode points to the list -> write to the NodeList
+        Node* currentNode = &NodeList[wave.nodeID];
 
-        if(wave.travelTime < currentNode->bestTime) {  // check if a better path exist, if not, skip this wave
-            currentNode->reachingEdgeID = wave.edgeID;
-            currentNode->bestTime = wave.travelTime;
+        // check if a better path exist, if there is, expand the wave, else, delete this wave
+        if(wave.travelTime < currentNode->bestTime) {
+            /*
+            cout << endl
+                 << "Wave at Intersection " << wave.nodeID << " is expanded" << endl;
+            */
+            
+            /******** Update information of currentNode ********/
+            currentNode->reachingEdgeID = wave.edgeID;  // update reachingEdge; first node is NON_EXISTENT
+            currentNode->bestTime = wave.travelTime; // update bestTime
+//                IntersectionIdx lastNodeID = getOtherEnd_Traceback(wave.nodeID, currentNode->reachingEdgeID);
+//                Node* lastNode = &NodeList[lastNodeID];
+//                currentNode->bestTime = lastNode->bestTime + findStreetSegmentTravelTime(currentNode->reachingEdgeID);
+//                if(lastNode->reachingEdgeID != NON_EXISTENT) {
+//                    bool changeName = (getStreetSegmentInfo(currentNode->reachingEdgeID).streetID != getStreetSegmentInfo(lastNode->reachingEdgeID).streetID);
+//                    if(changeName)
+//                        currentNode->bestTime += turn_penalty;
+//                }
+//            }
+            // computePathTravelTime(TraceBack(wave.nodeID, false), turn_penalty);
 
-            // find the destination
-            if(currentNode->nodeID == intersect_id_destination)
-                return TraceBack(intersect_id_destination);
+            // if find the destination
+            if(wave.nodeID == intersect_id_destination) {
+                return TraceBack(intersect_id_destination, true);
+            }
 
             // for each reachingEdge of the current Node
-            vector<IntersectionIdx> otherEnds = getOtherEnds(currentNode->nodeID);
+            vector<IntersectionIdx> otherEnds = getOtherEnds(wave.nodeID);
+            vector<StreetSegmentIdx> otherEdges = getConnectEdges(wave.nodeID);
             for(int i = 0; i < otherEnds.size(); i++) {
                 /*** update the node structure ***/
-                Node* toNode = & NodeList[otherEnds[i]];  // Get from Nodelist, write to corresponding intersection index
-                // update the reaching edge of each new Nodes
-                toNode->reachingEdgeID = getIntersectionStreetSegment(currentNode->nodeID, i);
+                Node* toNode = &NodeList[otherEnds[i]];
+
+                // if toNode comes from the same Node last time, then it couldn't be the shortest path
+                if(currentNode->lastFromNodeID == otherEnds[i])
+                    continue;
+                toNode->lastFromNodeID = wave.nodeID;
 
                 /*** Create new waves ***/
                 // calculate travelTime of the wave
-                double time = currentNode->bestTime + findStreetSegmentTravelTime(toNode->reachingEdgeID);
+                double time = currentNode->bestTime + findStreetSegmentTravelTime(otherEdges[i]);
+                if(currentNode->reachingEdgeID != NON_EXISTENT) {
+                    bool changeName = (getStreetSegmentInfo(otherEdges[i]).streetID != getStreetSegmentInfo(currentNode->reachingEdgeID).streetID);
+                    if(changeName)
+                        time += turn_penalty;
+                }
 
                 // calculate estimatedTime of the wave
-                LatLon node_position = getIntersectionPosition(toNode->nodeID);
+                LatLon node_position = getIntersectionPosition(otherEnds[i]);
                 pair<LatLon, LatLon> position_pair(node_position, destination_position);
-                double extra_time = findDistanceBetweenTwoPoints(position_pair) / 30;
+                double extra_time = findDistanceBetweenTwoPoints(position_pair) / 50;  // approximately the speed of highway
+
                 double estimated_time = time + extra_time;
 
                 // push the new waves to the priority queue
-                Wavefront.push(WaveElem((toNode->nodeID), toNode->reachingEdgeID, time, estimated_time));
+                Wavefront.push(WaveElem(otherEnds[i], otherEdges[i], time, estimated_time));
             }
+            // print_queue(Wavefront);
         }
-        // add to the top
+        /*
+                else
+                     cout << endl << "Wave at Intersection " << wave.nodeID << " is deleted" << endl;
+                */
     }
-    return TraceBack(intersect_id_destination);
+
+    if(Wavefront.size() == 0) {
+        NodeList.clear();
+        return { 0 };  // path not found
+    }
 }

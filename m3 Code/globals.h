@@ -157,21 +157,31 @@ class WaveElem {
     }
 };
 
-class Node {
+struct Node {
     public:
-    IntersectionIdx nodeID;
-    StreetSegmentIdx reachingEdgeID;  // parent edge, intialize to NON_EXISTANT at the beginning
-    double bestTime;  // initialize to INT8_MAX
-    Node(IntersectionIdx node_id, StreetSegmentIdx reaching_edge_id, double best_time) {
-        nodeID = node_id;
-        reachingEdgeID = reaching_edge_id;
-        bestTime = best_time;
-    };
+//    IntersectionIdx nodeID;
+    IntersectionIdx lastFromNodeID = NON_EXISTENT;
+    StreetSegmentIdx reachingEdgeID = NON_EXISTENT;  // parent edge, intialize to NON_EXISTENT at the beginning
+    double bestTime = INT32_MAX;  // initialize to INT8_MAX
+//    Node() {
+//        nodeID = 0;
+//        reachingEdgeID = NON_EXISTENT;
+//        bestTime = INT32_MAX;
+//        lastFromNodeID = NON_EXISTENT;
+//    }
+//    Node(IntersectionIdx node_id) {
+//        nodeID = node_id;
+//        reachingEdgeID = NON_EXISTENT;
+//        lastFromNodeID = NON_EXISTENT;
+//        bestTime = INT32_MAX;
+//    };
 };
 
 extern std::vector<Node> NodeList;
 
 void load_NodeList();
+
+void clear_NodeList();
 
 // used in the priority queue
 struct CompareEstimatedTravelTime {
@@ -181,7 +191,11 @@ struct CompareEstimatedTravelTime {
     }
 };
 
-extern priority_queue<WaveElem, std::vector<WaveElem>, CompareEstimatedTravelTime> Wavefront;
+
+
+void print_queue(std::priority_queue<WaveElem, std::vector<WaveElem>, CompareEstimatedTravelTime> queue);
+
+
 
 
 #endif /* globals_hpp */

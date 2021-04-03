@@ -55,6 +55,9 @@ bool loadMap(std::string map_streets_database_filename) {
         street_to_streetSegments();
         street_to_intersections();
         streetName_to_partialStreetNames();
+        
+        // Milestone 3
+        // load_NodeList();
     }
     return load_successful;
 }
@@ -68,6 +71,9 @@ void closeMap() {
     street_streetSegments.clear();
     street_intersections.clear();
     partial_street_names.clear();
+    
+    // Milestone 3
+    // NodeList.clear();
 
     closeStreetDatabase();
 }
@@ -217,9 +223,22 @@ vector<StreetIdx> findStreetIdsFromPartialStreetName(std::string street_prefix) 
     if(street_prefix.length() == 0) {
         return {};  // Return an empty vector if street_prefix is an empty string
     }
-
-    street_prefix = modify_name(street_prefix);
-
+    
+    
+    
+    // modify_name
+    int len = (int)street_prefix.length();
+    // Lower case to upper case
+    for(int i = 0; i < len; i++) {
+        if(street_prefix[i] >= 'a' && street_prefix[i] <= 'z') {
+            street_prefix[i] -= 32;
+        }
+    }
+    // Remove space
+    street_prefix.erase(remove(street_prefix.begin(), street_prefix.end(), ' '), street_prefix.end());
+    
+    
+    
     // find the beginning and ending of traversing
     auto it_start = partial_street_names.lower_bound(street_prefix);
     // add the last character of the prefix by 1, e.g. "abc" -> "abd", so that we can know where to stop traversing

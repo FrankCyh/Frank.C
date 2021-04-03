@@ -26,7 +26,7 @@ using std::set;
 /*******************************************/
 bool check_duplicate(std::vector<IntersectionIdx> adjacentIntersections, IntersectionIdx intersection_id);
 
-std::string modify_name(std::string name);
+/*std::string modify_name(std::string name);*/
 
 std::string convert_to_string(char* a, int size);
 
@@ -71,12 +71,18 @@ bool identify_map(std::string & identifier);
 /***** Helper Function for Milestone 3 *****/
 /*******************************************/
 
-void print_queue(std::priority_queue<WaveElem, std::vector<WaveElem>, CompareEstimatedTravelTime> queue);
+//void print_queue(std::priority_queue<WaveElem, std::vector<WaveElem>, CompareEstimatedTravelTime> queue);
 
-std::vector<StreetSegmentIdx> TraceBack(const IntersectionIdx intersect_id_destination);
+vector<StreetSegmentIdx> TraceBack(const IntersectionIdx intersect_id_destination, bool finished);
 
 vector <IntersectionIdx> getOtherEnds(IntersectionIdx thisEnd);
 
 IntersectionIdx getOtherEnd(IntersectionIdx thisEnd, StreetSegmentIdx thisStreetSeg);
+
+vector <StreetSegmentIdx> getConnectEdges(IntersectionIdx intersection_id);
+
+IntersectionIdx getOtherEnd_Traceback(IntersectionIdx thisEnd, StreetSegmentIdx thisStreetSeg);
+
+void update_highlighted_segments(std::vector<StreetSegmentIdx> segs);
 
 #endif /* helper_h */

@@ -178,9 +178,22 @@ void streetName_to_partialStreetNames() {
             // 0: position to start copy
             partialName[end] = '\0';
             // put the null character at the end
-            string partialNameString = convert_to_string(partialName, length + 2);
+            std::string partialNameString = convert_to_string(partialName, length + 2);
             // make all Upper case and Delete space for comparing
-            partialNameString = modify_name(partialNameString);
+
+
+            // modify_name
+            int len = (int)partialNameString.length();
+            // Lower case to upper case
+            for(int i = 0; i < len; i++) {
+                if(partialNameString[i] >= 'a' && partialNameString[i] <= 'z') {
+                    partialNameString[i] -= 32;
+                }
+            }
+            // Remove space
+            partialNameString.erase(remove(partialNameString.begin(), partialNameString.end(), ' '), partialNameString.end());
+
+
             pair<string, StreetIdx> toInsert(partialNameString, street_id);
             partial_street_names.insert(toInsert);
         }
@@ -292,12 +305,33 @@ void load_features() {
 
 std::vector<Node> NodeList;
 
-void load_NodeList() {
-    NodeList.resize(getNumIntersections());
-    for(int i = 0; i < getNumIntersections(); i++) {
-        NodeList.push_back(Node(i, NON_EXISTENT, INT8_MAX));
+//void load_NodeList() {
+//    for(int i = 0; i < getNumIntersections(); i++) {
+//        NodeList.push_back(Node);
+//    }
+//}
+
+//void clear_NodeList() {
+//    for(int i = 0; i < getNumIntersections(); i++) {
+//        if(NodeList[i].bestTime != INT32_MAX) {
+//            NodeList[i].bestTime = INT32_MAX;
+//            NodeList[i].reachingEdgeID = NON_EXISTENT;
+//            NodeList[i].lastFromNodeID = NON_EXISTENT;
+//        }
+//    }
+//}
+
+void print_queue(std::priority_queue<WaveElem, std::vector<WaveElem>, CompareEstimatedTravelTime> queue) {  // NB: pass by value so the print uses a copy
+    for(int i = 0; !queue.empty(); i++) {
+        cout << "/*********************************/" << endl;
+        cout << "Wave NO. " << i + 1 << endl;
+        cout << "  NodeID: " << queue.top().nodeID << " " << endl;
+        cout << "  edgeID: " << queue.top().edgeID << " " << endl;
+        cout << "  travelTime: " << queue.top().travelTime << " " << endl;
+        cout << "  estimatedTime: " << queue.top().estimatedTime << " " << endl;
+        cout << endl;
+
+        queue.pop();
     }
+    cout << endl;
 }
-
-priority_queue<WaveElem, std::vector<WaveElem>, CompareEstimatedTravelTime> Wavefront;
-
