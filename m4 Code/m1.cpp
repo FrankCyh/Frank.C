@@ -52,8 +52,8 @@ bool loadMap(std::string map_streets_database_filename) {
         streetSegments_to_smallSegments();
         streetSegments_to_segmentLength();
         streetSegments_to_segmentTravelTime();
-         street_to_streetSegments();
-        // street_to_intersections();
+        // street_to_streetSegments();
+        // street_to_intersections();//
         // streetName_to_partialStreetNames();
         
         // Milestone 3
@@ -68,9 +68,15 @@ void closeMap() {
     streetSegments_smallSegmentsLength.clear();
     segment_length.clear();
     segment_travel_time.clear();
-     street_streetSegments.clear();
-   // street_intersections.clear();
-   // partial_street_names.clear();
+    street_streetSegments.clear();
+    street_intersections.clear();//
+    partial_street_names.clear();
+    
+    // Milestone 2
+    intersections.clear();
+    segments.clear();
+    POIs.clear();
+    features.clear();
     
     // Milestone 3
     // NodeList.clear();

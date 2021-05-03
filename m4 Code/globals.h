@@ -10,6 +10,7 @@
 #include "m1.h"  // "StreetsDatabaseAPI.h"
 #include "helper.h"
 
+
 #include <iostream>
 using std::cin;
 using std::cout;
@@ -81,6 +82,7 @@ struct intersection_data {
     LatLon position;
     std::string name;
     bool highlight = false;
+    //bool is_dest = false;
 };
 
 extern std::vector<intersection_data> intersections;
@@ -182,6 +184,13 @@ struct CompareEstimatedTravelTime {
     bool operator()(WaveElem const& element1, WaveElem const& element2) {
         // element arranged in increasing order of
         return element1.estimatedTime > element2.estimatedTime;
+    }
+};
+
+struct CompareTravelTime {
+    bool operator()(WaveElem const& element1, WaveElem const& element2) {
+        // element arranged in increasing order of
+        return element1.travelTime > element2.travelTime;
     }
 };
 

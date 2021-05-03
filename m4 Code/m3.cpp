@@ -113,6 +113,6 @@ const double turn_penalty) {
     // Corner Case: path not found
     if(Wavefront.size() == 0) {
         NodeList.clear();
-        return {0};
+        return { 0 };
     }
 }

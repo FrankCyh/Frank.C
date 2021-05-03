@@ -347,13 +347,35 @@ bool identify_map(std::string& identifier) {
 /***** Helper Function for Milestone 3 *****/
 /*******************************************/
 
+// Given a StreetSegmentIdx and an IntersectionIdx(which is oneEnd of this StreetSegment), return the otherEnd of the StreetSegment, can't travel against oneWay
+IntersectionIdx getOtherEnd(IntersectionIdx thisEnd, StreetSegmentIdx thisStreetSeg) {
+    IntersectionIdx otherEnd;
+    if(getStreetSegmentInfo(thisStreetSeg).from == thisEnd)
+        otherEnd = getStreetSegmentInfo(thisStreetSeg).to;
+    else if(!getStreetSegmentInfo(thisStreetSeg).oneWay)
+        otherEnd = getStreetSegmentInfo(thisStreetSeg).from;
+    else
+        otherEnd = (StreetSegmentIdx)NON_EXISTENT;
+    return otherEnd;
+}
 
+// Given a StreetSegmentIdx and an IntersectionIdx(which is oneEnd of this StreetSegment), return the otherEnd of the StreetSegment, can travel against oneWay(used in Traceback function)
+IntersectionIdx getOtherEnd_Traceback(IntersectionIdx thisEnd, StreetSegmentIdx thisStreetSeg) {
+    IntersectionIdx otherEnd;
+    if(getStreetSegmentInfo(thisStreetSeg).from == thisEnd)
+        otherEnd = getStreetSegmentInfo(thisStreetSeg).to;
+    else
+        otherEnd = getStreetSegmentInfo(thisStreetSeg).from;
+    return otherEnd;
+}
+
+// used for tracing back when finally find a path
 vector<StreetSegmentIdx> TraceBack(const IntersectionIdx intersect_id_destination, bool finished) {
     list<StreetSegmentIdx> path;
 
     Node* currentNode = &NodeList[intersect_id_destination];
     IntersectionIdx currentNode_id = intersect_id_destination;
-    
+
     while(currentNode->reachingEdgeID != NON_EXISTENT) {  // haven't reached the starting point
         StreetSegmentIdx previousEdge = currentNode->reachingEdgeID;
         path.push_front(previousEdge);
@@ -361,26 +383,14 @@ vector<StreetSegmentIdx> TraceBack(const IntersectionIdx intersect_id_destinatio
         currentNode_id = getOtherEnd_Traceback(currentNode_id, currentNode->reachingEdgeID);
         currentNode = &NodeList[currentNode_id];
     }
-    
+
     vector<StreetSegmentIdx> result(path.begin(), path.end());
     if(finished)
         NodeList.clear();
     return result;
 }
 
-vector<IntersectionIdx> getOtherEnds(IntersectionIdx thisEnd) {
-    vector<IntersectionIdx> result;
-    int num_street_seg_connected = getNumIntersectionStreetSegment(thisEnd);
-    IntersectionIdx otherEnd;
-    for(int i = 0; i < num_street_seg_connected; i++) {
-        StreetSegmentIdx street_seg_connected = getIntersectionStreetSegment(thisEnd, i);
-        otherEnd = getOtherEnd(thisEnd, street_seg_connected);
-        if(otherEnd != NON_EXISTENT)
-            result.push_back(otherEnd);
-    }
-    return result;
-}
-
+// Given a IntersectionIdx, find all the streetSegment connected
 vector<StreetSegmentIdx> getConnectEdges(IntersectionIdx intersection_id) {
     vector<IntersectionIdx> result;
     int num_street_seg_connected = getNumIntersectionStreetSegment(intersection_id);
@@ -394,25 +404,28 @@ vector<StreetSegmentIdx> getConnectEdges(IntersectionIdx intersection_id) {
     return result;
 }
 
-IntersectionIdx getOtherEnd(IntersectionIdx thisEnd, StreetSegmentIdx thisStreetSeg) {
+// Given a IntersectionIdx, find all the IntersectionIdx at the otherEnd of streetSegment connected
+vector<IntersectionIdx> getOtherEnds(IntersectionIdx thisEnd) {
+    vector<IntersectionIdx> result;
+    int num_street_seg_connected = getNumIntersectionStreetSegment(thisEnd);
     IntersectionIdx otherEnd;
-    if(getStreetSegmentInfo(thisStreetSeg).from == thisEnd)
-        otherEnd = getStreetSegmentInfo(thisStreetSeg).to;
-    else if(!getStreetSegmentInfo(thisStreetSeg).oneWay)
-        otherEnd = getStreetSegmentInfo(thisStreetSeg).from;
-    else
-        otherEnd = (StreetSegmentIdx)NON_EXISTENT;
-    return otherEnd;
+    for(int i = 0; i < num_street_seg_connected; i++) {
+        StreetSegmentIdx street_seg_connected = getIntersectionStreetSegment(thisEnd, i);
+        otherEnd = getOtherEnd(thisEnd, street_seg_connected);
+        if(otherEnd != NON_EXISTENT)
+            result.push_back(otherEnd);
+    }
+    return result;
 }
 
-
-IntersectionIdx getOtherEnd_Traceback(IntersectionIdx thisEnd, StreetSegmentIdx thisStreetSeg) {
-    IntersectionIdx otherEnd;
-    if(getStreetSegmentInfo(thisStreetSeg).from == thisEnd)
-        otherEnd = getStreetSegmentInfo(thisStreetSeg).to;
+// print the procedure in expanding the waves
+void print_Expand_Delete(IntersectionIdx waveID, bool expand) {
+    cout << endl
+         << "Wave at Intersection " << waveID;
+    if(expand)
+        cout << " is expanded" << endl;
     else
-        otherEnd = getStreetSegmentInfo(thisStreetSeg).from;
-    return otherEnd;
+        cout << " is deleted" << endl;
 }
 
 
